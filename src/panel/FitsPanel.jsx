@@ -34,6 +34,9 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
   const [showExport, setShowExport] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
   const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
+  const [infoPanelPos, setInfoPanelPos] = useState({ x: 0, y: 0 });
+  const [infoDragging, setInfoDragging] = useState(false);
+  const infoDragStart = useRef({ x: 0, y: 0 });
 
   const canvasRef = useRef(null);
   const histCanvasRef = useRef(null);
@@ -378,6 +381,24 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
 
   const isActive = workspace?.state?.activePanel === id;
 
+  // Info panel drag handlers
+  const handleInfoDragStart = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    infoDragStart.current = { x: e.clientX - infoPanelPos.x, y: e.clientY - infoPanelPos.y };
+    setInfoDragging(true);
+    const onMove = (ev) => {
+      setInfoPanelPos({ x: ev.clientX - infoDragStart.current.x, y: ev.clientY - infoDragStart.current.y });
+    };
+    const onUp = () => {
+      setInfoDragging(false);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, [infoPanelPos]);
+
   return (
     <div
       onMouseDown={() => { if (dispatch && !isActive) dispatch({ type: "SET_ACTIVE_PANEL", panelId: id }); }}
@@ -480,14 +501,22 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
 
       {/* ─── Main Area ─── */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden", position: "relative" }}>
-        {/* ─── Left Panel (overlay) ─── */}
+        {/* ─── Info Panel (floating overlay) ─── */}
         {imageData && (showHist || showHeader) && (
           <div style={{
-            position: "absolute", top: 0, left: 0, bottom: 0, zIndex: 10,
-            width: 270, borderRight: `1px solid ${T.border}`,
+            position: "absolute", top: infoPanelPos.y, left: infoPanelPos.x, zIndex: 10,
+            width: 270, maxHeight: "calc(100% - 8px)", borderRadius: 6,
+            border: `1px solid ${T.border}`, boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
             background: `${T.surface}ee`, overflowY: "auto", display: "flex", flexDirection: "column",
-            backdropFilter: "blur(12px)",
+            backdropFilter: "blur(12px)", cursor: infoDragging ? "grabbing" : "default",
           }}>
+            {/* Drag handle */}
+            <div onMouseDown={handleInfoDragStart} style={{
+              padding: "4px 0", cursor: "grab", display: "flex", justifyContent: "center",
+              flexShrink: 0, borderBottom: `1px solid ${T.border}`,
+            }}>
+              <div style={{ width: 32, height: 4, borderRadius: 2, background: T.textDim, opacity: 0.4 }} />
+            </div>
             {/* Stretch */}
             {showHist && (
               <div style={{ padding: 12, borderBottom: `1px solid ${T.border}` }}>
