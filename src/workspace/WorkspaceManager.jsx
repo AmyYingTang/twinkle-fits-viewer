@@ -1,16 +1,31 @@
 import { useReducer, useRef, useCallback } from "react";
-import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from "react-resizable-panels";
 import { WorkspaceContext } from "./WorkspaceContext.js";
-import { splitPanel, removePanel, countPanels, getPanelIds } from "./panelLayoutUtils.js";
+import { countPanels, getPanelIds, LAYOUT_PRESETS } from "./panelLayoutUtils.js";
 import FitsPanel from "../panel/FitsPanel.jsx";
 import TopBar from "../components/TopBar.jsx";
 import HelpModal from "../components/HelpModal.jsx";
 import BlinkView from "../panel/BlinkView.jsx";
 import { T } from "../theme.js";
 
+const ALL_PANEL_IDS = ["panel-1", "panel-2", "panel-3", "panel-4"];
+
+const VISIBLE_PANELS = {
+  "1": ["panel-1"],
+  "2h": ["panel-1", "panel-2"],
+  "2v": ["panel-1", "panel-2"],
+  "4": ["panel-1", "panel-2", "panel-3", "panel-4"],
+};
+
+const GRID_STYLES = {
+  "1": { gridTemplateColumns: "1fr", gridTemplateRows: "1fr" },
+  "2h": { gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr" },
+  "2v": { gridTemplateColumns: "1fr", gridTemplateRows: "1fr 1fr" },
+  "4": { gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr" },
+};
+
 const initialState = {
-  layout: { type: "panel", id: "panel-1" },
-  nextPanelId: 2,
+  layout: LAYOUT_PRESETS["1"],
+  layoutPreset: "1",
   activePanel: "panel-1",
   // Sync
   syncZoomPan: false,
@@ -28,24 +43,14 @@ const initialState = {
 
 function workspaceReducer(state, action) {
   switch (action.type) {
-    case "SPLIT_PANEL": {
-      if (countPanels(state.layout) >= 4) return state;
-      const newId = `panel-${state.nextPanelId}`;
+    case "SET_LAYOUT": {
+      const preset = LAYOUT_PRESETS[action.preset];
+      if (!preset) return state;
+      const newIds = getPanelIds(preset);
       return {
         ...state,
-        layout: splitPanel(state.layout, action.panelId, newId, action.direction),
-        nextPanelId: state.nextPanelId + 1,
-        activePanel: newId,
-      };
-    }
-    case "CLOSE_PANEL": {
-      const ids = getPanelIds(state.layout);
-      if (ids.length <= 1) return state;
-      const newLayout = removePanel(state.layout, action.panelId);
-      const newIds = getPanelIds(newLayout);
-      return {
-        ...state,
-        layout: newLayout,
+        layout: preset,
+        layoutPreset: action.preset,
         activePanel: newIds.includes(state.activePanel) ? state.activePanel : newIds[0],
       };
     }
@@ -92,53 +97,30 @@ export default function WorkspaceManager() {
   }, []);
 
   const contextValue = { state, dispatch, getPanelRef, panelRefs };
-
-  function renderLayout(node, key = "root") {
-    if (node.type === "panel") {
-      return (
-        <Panel key={node.id} minSize="15%">
-          <FitsPanel
-            ref={getPanelRef(node.id)}
-            id={node.id}
-            lang={state.lang}
-          />
-        </Panel>
-      );
-    }
-
-    return (
-      <PanelGroup key={key} orientation={node.direction}>
-        {node.children.flatMap((child, i) => {
-          const elements = [];
-          if (i > 0) {
-            elements.push(
-              <PanelResizeHandle key={`handle-${key}-${i}`}
-                style={{
-                  width: node.direction === "horizontal" ? 4 : undefined,
-                  height: node.direction === "vertical" ? 4 : undefined,
-                  background: T.border,
-                  cursor: node.direction === "horizontal" ? "col-resize" : "row-resize",
-                  flexShrink: 0,
-                }}
-              />
-            );
-          }
-          elements.push(renderLayout(child, `${key}-${i}`));
-          return elements;
-        })}
-      </PanelGroup>
-    );
-  }
+  const visible = VISIBLE_PANELS[state.layoutPreset] || VISIBLE_PANELS["1"];
 
   return (
     <WorkspaceContext.Provider value={contextValue}>
       <TopBar />
       <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-        {state.layout.type === "panel" ? (
-          <PanelGroup orientation="horizontal">
-            {renderLayout(state.layout)}
-          </PanelGroup>
-        ) : renderLayout(state.layout)}
+        <div style={{
+          width: "100%", height: "100%",
+          display: "grid", gap: 2, background: T.border,
+          ...GRID_STYLES[state.layoutPreset],
+        }}>
+          {ALL_PANEL_IDS.map(pid => (
+            <div key={pid} style={{
+              display: visible.includes(pid) ? "block" : "none",
+              overflow: "hidden", minWidth: 0, minHeight: 0,
+            }}>
+              <FitsPanel
+                ref={getPanelRef(pid)}
+                id={pid}
+                lang={state.lang}
+              />
+            </div>
+          ))}
+        </div>
         <BlinkView />
       </div>
       <HelpModal />

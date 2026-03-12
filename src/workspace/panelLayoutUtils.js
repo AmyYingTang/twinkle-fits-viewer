@@ -1,3 +1,57 @@
+// Layout presets with stable panel IDs so React preserves component state
+export const LAYOUT_PRESETS = {
+  "1": { type: "panel", id: "panel-1" },
+  "2h": {
+    direction: "horizontal",
+    children: [
+      { type: "panel", id: "panel-1" },
+      { type: "panel", id: "panel-2" },
+    ],
+  },
+  "2v": {
+    direction: "vertical",
+    children: [
+      { type: "panel", id: "panel-1" },
+      { type: "panel", id: "panel-2" },
+    ],
+  },
+  "4": {
+    direction: "vertical",
+    children: [
+      {
+        direction: "horizontal",
+        children: [
+          { type: "panel", id: "panel-1" },
+          { type: "panel", id: "panel-2" },
+        ],
+      },
+      {
+        direction: "horizontal",
+        children: [
+          { type: "panel", id: "panel-3" },
+          { type: "panel", id: "panel-4" },
+        ],
+      },
+    ],
+  },
+};
+
+// Detect which preset matches current layout (for highlighting active icon)
+export function detectPreset(layout) {
+  for (const [key, preset] of Object.entries(LAYOUT_PRESETS)) {
+    if (layoutsMatch(layout, preset)) return key;
+  }
+  return null;
+}
+
+function layoutsMatch(a, b) {
+  if (a.type === "panel" && b.type === "panel") return a.id === b.id;
+  if (a.type === "panel" || b.type === "panel") return false;
+  if (a.direction !== b.direction) return false;
+  if (a.children.length !== b.children.length) return false;
+  return a.children.every((c, i) => layoutsMatch(c, b.children[i]));
+}
+
 // Split an existing panel into two panels in the given direction
 export function splitPanel(layout, targetId, newId, direction) {
   if (layout.type === "panel") {

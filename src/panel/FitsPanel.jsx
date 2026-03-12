@@ -93,11 +93,11 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
     setColorMap, setShowHeader, setShowHist, setShowGrid, setShowExport,
   }));
 
-  // Render image
+  // Render image (containerSize dep ensures re-draw when panel becomes visible)
   useEffect(() => {
-    if (!canvasRef.current || !imageData) return;
+    if (!canvasRef.current || !imageData || !containerSize.w) return;
     renderToCanvas(canvasRef.current, imageData, currentStretch, colorMap);
-  }, [imageData, currentStretch, colorMap]);
+  }, [imageData, currentStretch, colorMap, containerSize.w]);
 
   // Render histogram
   useEffect(() => {
@@ -394,6 +394,11 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
         background: T.surface, borderBottom: `1px solid ${T.border}`, flexShrink: 0,
         overflow: "hidden",
       }}>
+        <span style={{
+          background: isActive ? T.accent : T.border, color: isActive ? "#fff" : T.textDim,
+          borderRadius: 3, padding: "2px 7px", fontWeight: 700, fontSize: 11,
+          fontFamily: T.font, letterSpacing: "0.04em", flexShrink: 0, lineHeight: "18px",
+        }}>{{ "panel-1": "A", "panel-2": "B", "panel-3": "C", "panel-4": "D" }[id] || id}</span>
         <button onClick={() => fileInputRef.current?.click()} style={{
           background: T.accent, color: "#fff", border: "none", borderRadius: 4,
           padding: "6px 14px", cursor: "pointer", fontFamily: T.font, fontSize: 12,
