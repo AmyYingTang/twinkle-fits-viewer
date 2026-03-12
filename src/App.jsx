@@ -448,9 +448,9 @@ function exportTIFF(canvas, imageData, stretchParams, colorMap) {
 // ─── Main Component ──────────────────────────────────────────────────
 const COLORMAPS = ["gray", "heat", "cool"];
 const T = { // theme
-  bg: "#1a1a24", surface: "#222230", surfaceAlt: "#2a2a38", border: "#3a3a4a",
-  text: "#e0e0ec", textDim: "#8888a0", accent: "#7b9aff", accentDim: "#4a5a9a",
-  red: "#ff7b7b", green: "#60df76", amber: "#ffd098",
+  bg: "#2d2d3d", surface: "#383848", surfaceAlt: "#404052", border: "#555568",
+  text: "#ededf5", textDim: "#a0a0b8", accent: "#8dacff", accentDim: "#5a6aaa",
+  red: "#ff8888", green: "#70ef86", amber: "#ffe0a8",
   font: "'JetBrains Mono', 'SF Mono', 'Fira Code', monospace",
 };
 
@@ -467,23 +467,36 @@ const L = {
     parsing: "Parsing FITS data...", val: "Val",
     pngBtn: "PNG (8-bit)", tiffBtn: "TIFF (16-bit)",
     exportDesc: "PNG: quick share • TIFF: full 16-bit dynamic range, current stretch applied",
-    glossaryTitle: "Glossary",
+    glossaryTitle: "Help & Glossary",
     glossary: [
-      ["FITS", "Flexible Image Transport System — the standard file format used in astronomy for storing images, tables, and metadata."],
-      ["WCS", "World Coordinate System — metadata embedded in a FITS header that maps pixel coordinates (x, y) to sky coordinates (RA/Dec)."],
-      ["RA / Dec", "Right Ascension and Declination — celestial coordinates analogous to longitude and latitude on Earth's sky."],
-      ["Projection", "The mathematical method used to map the curved sky onto a flat image. TAN (gnomonic) is the most common."],
-      ["HIST", "Histogram — shows the distribution of pixel values in the image. Used to visualize and control the stretch."],
-      ["HDR", "Header — the FITS header containing metadata: observation date, telescope, exposure time, WCS info, and more."],
-      ["Stretch", "A nonlinear mapping of raw pixel values to display brightness. Necessary because astronomical images have very high dynamic range."],
-      ["Shadow", "The black-point clipping level. Pixels at or below this value are mapped to black."],
-      ["Midtone", "Controls the gamma curve between shadow and highlight — shifts the brightness distribution without clipping."],
-      ["Highlight", "The white-point clipping level. Pixels at or above this value are mapped to white."],
-      ["Colormap", "A palette that maps single-channel pixel values to display colors. GRAY is linear grayscale; HEAT and COOL apply false-color palettes."],
-      ["Statistics", "Computed per-channel values — Min, Max, Mean, Median, MAD (Median Absolute Deviation), and σ (standard deviation)."],
-      ["MAD", "Median Absolute Deviation — a robust measure of spread less sensitive to outliers than standard deviation."],
-      ["σ (Sigma)", "Standard deviation — measures how spread out the pixel values are from the mean."],
-      ["GRID", "Overlays a coordinate grid (RA/Dec lines) on the image using the WCS solution."],
+      { section: "FITS File & Header (HDR)", items: [
+        ["FITS", "Flexible Image Transport System — the standard file format in astronomy for storing images, tables, and metadata."],
+        ["HDR (Header)", "The FITS header block containing metadata: observation date, telescope, exposure time, WCS parameters, pixel format, and more."],
+      ]},
+      { section: "Stretch Panel", items: [
+        ["Stretch", "Autostretch uses MAD-based sigma estimation + Midtone Transfer Function (MTF), identical to the STF algorithm in Siril/PixInsight. The shadow clip point is set at median - 2.8\u03c3. In manual mode you can independently adjust the shadow clip, midtone balance, and highlight ceiling."],
+        ["HIST (Histogram)", "Shows the distribution of pixel values. Used to visualize and fine-tune the stretch parameters."],
+        ["Shadow", "The black-point clip level. Pixels at or below this value are mapped to black."],
+        ["Midtone", "Controls the gamma curve between shadow and highlight — shifts the brightness distribution without clipping."],
+        ["Highlight", "The white-point clip level. Pixels at or above this value are mapped to white."],
+        ["Colormap", "Maps single-channel pixel values to display colors. GRAY = linear grayscale; HEAT and COOL = false-color palettes. Only applies to monochrome images."],
+      ]},
+      { section: "Statistics", items: [
+        ["Min / Max", "The minimum and maximum pixel values in the channel."],
+        ["Mean / Median", "Mean is the arithmetic average; Median is the middle value — more robust to outliers."],
+        ["MAD", "Median Absolute Deviation — a robust measure of spread, less sensitive to outliers than standard deviation."],
+        ["\u03c3 (Sigma)", "Standard deviation — measures how spread out pixel values are from the mean."],
+      ]},
+      { section: "WCS & Coordinates", items: [
+        ["WCS", "World Coordinate System — metadata in the FITS header that maps pixel coordinates (x, y) to sky coordinates (RA/Dec)."],
+        ["RA / Dec", "Right Ascension and Declination — celestial coordinates analogous to longitude and latitude on Earth's sky."],
+        ["Projection", "The mathematical method mapping the curved sky onto a flat image. TAN (gnomonic) is the most common."],
+        ["GRID", "Overlays an RA/Dec coordinate grid on the image using the WCS solution."],
+      ]},
+      { section: "Export", items: [
+        ["PNG (8-bit)", "Quick-share format with the current stretch baked in. Standard 8-bit per channel."],
+        ["TIFF (16-bit)", "Full 16-bit dynamic range export with the current stretch applied. Suitable for further processing."],
+      ]},
     ],
   },
   cn: {
@@ -498,23 +511,36 @@ const L = {
     parsing: "正在解析 FITS 数据...", val: "值",
     pngBtn: "PNG (8位)", tiffBtn: "TIFF (16位)",
     exportDesc: "PNG：快速分享 • TIFF：完整 16 位动态范围，应用当前拉伸",
-    glossaryTitle: "术语表",
+    glossaryTitle: "帮助 & 术语表",
     glossary: [
-      ["FITS", "灵活图像传输系统 (Flexible Image Transport System) — 天文学中用于存储图像、表格和元数据的标准文件格式。"],
-      ["WCS", "世界坐标系统 (World Coordinate System) — 嵌入 FITS 头信息中的元数据，将像素坐标 (x, y) 映射到天球坐标 (赤经/赤纬)。"],
-      ["赤经 / 赤纬", "赤经 (RA) 和赤纬 (Dec) — 天球坐标，类似于地球上的经度和纬度。"],
-      ["投影", "将弯曲的天球映射到平面图像的数学方法。TAN (球心投影) 是最常见的方式。"],
-      ["直方图 (HIST)", "显示图像中像素值的分布，用于可视化和控制拉伸。"],
-      ["头信息 (HDR)", "FITS 头信息，包含元数据：观测日期、望远镜、曝光时间、WCS 信息等。"],
-      ["拉伸 (Stretch)", "将原始像素值非线性映射到显示亮度。由于天文图像动态范围极高，拉伸是必要的。"],
-      ["暗部 (Shadow)", "黑点裁剪水平。等于或低于此值的像素映射为黑色。"],
-      ["中间调 (Midtone)", "控制暗部和亮部之间的伽马曲线 — 在不裁剪的情况下调整亮度分布。"],
-      ["亮部 (Highlight)", "白点裁剪水平。等于或高于此值的像素映射为白色。"],
-      ["色彩映射", "将单通道像素值映射为显示颜色的调色板。GRAY 为线性灰度；HEAT 和 COOL 为伪彩色。"],
-      ["统计信息", "按通道计算的值 — 最小值、最大值、均值、中位数、MAD (中位绝对偏差) 和 σ (标准差)。"],
-      ["MAD", "中位绝对偏差 (Median Absolute Deviation) — 一种比标准差对异常值更不敏感的离散度度量。"],
-      ["σ (标准差)", "标准差 — 衡量像素值与均值的偏离程度。"],
-      ["网格 (GRID)", "使用 WCS 解在图像上叠加坐标网格 (赤经/赤纬线)。"],
+      { section: "FITS 文件 & 头信息 (HDR)", items: [
+        ["FITS", "灵活图像传输系统 (Flexible Image Transport System) — 天文学中用于存储图像、表格和元数据的标准文件格式。"],
+        ["HDR (头信息)", "FITS 头信息块，包含元数据：观测日期、望远镜、曝光时间、WCS 参数、像素格式等。"],
+      ]},
+      { section: "拉伸面板", items: [
+        ["拉伸 (Stretch)", "Autostretch 使用 MAD-based \u03c3 估计 + Midtone Transfer Function (MTF)，和 Siril/PixInsight 的 STF 算法相同。Shadow 裁切点为 median - 2.8\u03c3。手动模式下可分别调整暗部裁切、中间调平衡和高光上限。"],
+        ["直方图 (HIST)", "显示像素值的分布，用于可视化和微调拉伸参数。"],
+        ["暗部 (Shadow)", "黑点裁切水平。等于或低于此值的像素映射为黑色。"],
+        ["中间调 (Midtone)", "控制暗部和亮部之间的伽马曲线 — 在不裁切的情况下调整亮度分布。"],
+        ["亮部 (Highlight)", "白点裁切水平。等于或高于此值的像素映射为白色。"],
+        ["色彩映射", "将单通道像素值映射为显示颜色的调色板。GRAY 为线性灰度；HEAT 和 COOL 为伪彩色。仅对单色图像生效。"],
+      ]},
+      { section: "统计信息", items: [
+        ["Min / Max", "该通道的最小值和最大值。"],
+        ["Mean / Median", "Mean 为算术平均值；Median 为中位数 — 对异常值更稳健。"],
+        ["MAD", "中位绝对偏差 (Median Absolute Deviation) — 一种比标准差对异常值更不敏感的离散度度量。"],
+        ["\u03c3 (标准差)", "标准差 — 衡量像素值与均值的偏离程度。"],
+      ]},
+      { section: "WCS & 坐标", items: [
+        ["WCS", "世界坐标系统 (World Coordinate System) — FITS 头信息中的元数据，将像素坐标 (x, y) 映射到天球坐标 (赤经/赤纬)。"],
+        ["赤经 / 赤纬", "赤经 (RA) 和赤纬 (Dec) — 天球坐标，类似于地球上的经度和纬度。"],
+        ["投影", "将弯曲的天球映射到平面图像的数学方法。TAN (球心投影) 是最常见的方式。"],
+        ["网格 (GRID)", "使用 WCS 解在图像上叠加赤经/赤纬坐标网格。"],
+      ]},
+      { section: "导出", items: [
+        ["PNG (8位)", "快速分享格式，当前拉伸效果已应用。标准 8 位每通道。"],
+        ["TIFF (16位)", "完整 16 位动态范围导出，应用当前拉伸。适合后续处理。"],
+      ]},
     ],
   },
 };
@@ -599,9 +625,9 @@ export default function FITSViewer() {
 
   // Render histogram
   useEffect(() => {
-    if (!histCanvasRef.current || !statsAndStretch) return;
+    if (!histCanvasRef.current || !statsAndStretch || !showHist) return;
     drawHistogram(histCanvasRef.current, statsAndStretch.histData, currentStretch);
-  }, [statsAndStretch, currentStretch]);
+  }, [statsAndStretch, currentStretch, showHist]);
 
   // Render coordinate grid overlay
   useEffect(() => {
@@ -613,11 +639,14 @@ export default function FITSViewer() {
     const ctx = gc.getContext("2d");
     ctx.clearRect(0, 0, width, height);
 
-    // Draw RA/Dec grid lines
-    ctx.strokeStyle = "rgba(107, 138, 253, 0.3)";
-    ctx.lineWidth = 1;
-    ctx.font = "bold 12px monospace";
-    ctx.fillStyle = "rgba(107, 138, 253, 0.7)";
+    // Draw RA/Dec grid lines — scale thickness & font to image size
+    const diagPx = Math.sqrt(width * width + height * height);
+    const lw = Math.max(1, Math.round(diagPx / 1200));
+    const fs = Math.max(12, Math.round(diagPx / 150));
+    ctx.strokeStyle = "rgba(140, 170, 255, 0.45)";
+    ctx.lineWidth = lw;
+    ctx.font = `bold ${fs}px monospace`;
+    ctx.fillStyle = "rgba(180, 200, 255, 0.85)";
 
     // Sample corners to determine coordinate range
     const corners = [
@@ -759,16 +788,25 @@ export default function FITSViewer() {
     if (e.dataTransfer?.files?.[0]) handleFile(e.dataTransfer.files[0]);
   }, [handleFile]);
 
-  const FIT_PAD = 16; // px padding around image in fit mode
+  const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setContainerSize({ w: el.clientWidth, h: el.clientHeight }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const FIT_PAD = 12;
   const getScale = useCallback(() => {
-    if (!containerRef.current || !imageData) return 1;
+    if (!containerSize.w || !containerSize.h || !imageData) return 1;
     if (zoom === "fit") {
-      const cw = containerRef.current.clientWidth - FIT_PAD * 2;
-      const ch = containerRef.current.clientHeight - FIT_PAD * 2;
-      return Math.min(cw / imageData.width, ch / imageData.height);
+      const ch = containerSize.h - FIT_PAD * 2;
+      const cw = containerSize.w - FIT_PAD * 2;
+      return Math.min(ch / imageData.height, cw / imageData.width);
     }
     return Number(zoom);
-  }, [zoom, imageData]);
+  }, [zoom, imageData, containerSize]);
 
   const handleMouseDown = (e) => {
     if (zoom !== "fit") { setDragging(true); setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y }); }
@@ -797,13 +835,9 @@ export default function FITSViewer() {
   const handleWheel = (e) => {
     if (!imageData) return;
     e.preventDefault();
-    const levels = [0.125, 0.25, 0.5, 1, 2, 4, 8];
     const cur = zoom === "fit" ? getScale() : Number(zoom);
-    const idx = levels.findIndex(z => z >= cur);
-    const ni = e.deltaY < 0
-      ? Math.min(levels.length - 1, (idx >= 0 ? idx : 0) + 1)
-      : Math.max(0, (idx >= 0 ? idx : levels.length) - 1);
-    setZoom(levels[ni]);
+    const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+    setZoom(Math.min(8, Math.max(0.05, +(cur * factor).toFixed(4))));
   };
 
   const scale = getScale();
@@ -846,13 +880,17 @@ export default function FITSViewer() {
         {imageData && (
           <>
             {/* Zoom */}
-            <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-              <span style={{ color: T.textDim, fontSize: 9, letterSpacing: "0.08em" }}>{t.zoom}</span>
-              {["fit", 0.5, 1, 2, 4].map(z => (
-                <Btn key={z} active={zoom === z} onClick={() => { setZoom(z); setPan({ x: 0, y: 0 }); }}>
-                  {z === "fit" ? t.fit : `${z}×`}
-                </Btn>
-              ))}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+              <Btn active={zoom === "fit"} onClick={() => { setZoom("fit"); setPan({ x: 0, y: 0 }); }}>{t.fit}</Btn>
+              <span style={{ color: T.textDim, fontSize: 9 }}>−</span>
+              <input type="range" min={-3} max={3} step={0.01}
+                value={zoom === "fit" ? Math.log2(getScale()) : Math.log2(Number(zoom))}
+                onChange={e => setZoom(+(2 ** Number(e.target.value)).toFixed(4))}
+                style={{ width: 90, accentColor: T.accent }} />
+              <span style={{ color: T.textDim, fontSize: 9 }}>+</span>
+              <span style={{ color: T.text, fontSize: 9, minWidth: 36, textAlign: "right" }}>
+                {(zoom === "fit" ? scale : Number(zoom)).toFixed(2)}×
+              </span>
             </div>
 
             {/* Panels & features */}
@@ -899,10 +937,15 @@ export default function FITSViewer() {
                 fontFamily: T.font, fontSize: 16,
               }}>✕</button>
             </div>
-            {t.glossary.map(([term, desc]) => (
-              <div key={term} style={{ marginBottom: 10 }}>
-                <span style={{ color: T.accent, fontWeight: 600 }}>{term}</span>
-                <span style={{ color: T.textDim }}> — {desc}</span>
+            {t.glossary.map((sec) => (
+              <div key={sec.section} style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: T.text, letterSpacing: "0.06em", marginBottom: 6, borderBottom: `1px solid ${T.border}`, paddingBottom: 4 }}>{sec.section}</div>
+                {sec.items.map(([term, desc]) => (
+                  <div key={term} style={{ marginBottom: 6, paddingLeft: 8 }}>
+                    <span style={{ color: T.accent, fontWeight: 600 }}>{term}</span>
+                    <span style={{ color: T.textDim }}> — {desc}</span>
+                  </div>
+                ))}
               </div>
             ))}
           </div>
@@ -935,12 +978,14 @@ export default function FITSViewer() {
       )}
 
       {/* ─── Main Area ─── */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {/* ─── Left Panel ─── */}
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", position: "relative" }}>
+        {/* ─── Left Panel (overlay) ─── */}
         {imageData && (showHist || showHeader) && (
           <div style={{
-            width: 230, flexShrink: 0, borderRight: `1px solid ${T.border}`,
-            background: T.surface, overflowY: "auto", display: "flex", flexDirection: "column",
+            position: "absolute", top: 0, left: 0, bottom: 0, zIndex: 10,
+            width: 270, borderRight: `1px solid ${T.border}`,
+            background: `${T.surface}ee`, overflowY: "auto", display: "flex", flexDirection: "column",
+            backdropFilter: "blur(12px)",
           }}>
             {/* Stretch */}
             {showHist && (
@@ -1077,31 +1122,30 @@ export default function FITSViewer() {
           onWheel={handleWheel}
           style={{
             flex: 1, overflow: "hidden", position: "relative",
-            display: "flex", alignItems: "center", justifyContent: "center",
             cursor: dragging ? "grabbing" : (zoom !== "fit" ? "grab" : "crosshair"),
           }}
         >
           {!imageData && !loading && (
-            <div style={{ textAlign: "center", padding: 48, border: `2px dashed ${T.border}`, borderRadius: 12, color: T.textDim }}>
-              <div style={{ fontSize: 40, marginBottom: 16, opacity: 0.3 }}>✦</div>
-              <div style={{ fontSize: 14, marginBottom: 8 }}>{t.dropHere}</div>
-              <div style={{ fontSize: 11 }}>{t.orClick}</div>
-              <div style={{ fontSize: 10, marginTop: 12, color: T.accentDim }}>
-                {t.formatInfo}
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ textAlign: "center", padding: 48, border: `2px dashed ${T.border}`, borderRadius: 12, color: T.textDim }}>
+                <div style={{ fontSize: 40, marginBottom: 16, opacity: 0.3 }}>✦</div>
+                <div style={{ fontSize: 14, marginBottom: 8 }}>{t.dropHere}</div>
+                <div style={{ fontSize: 11 }}>{t.orClick}</div>
+                <div style={{ fontSize: 10, marginTop: 12, color: T.accentDim }}>
+                  {t.formatInfo}
+                </div>
               </div>
             </div>
           )}
 
-          {loading && <div style={{ color: T.accent, fontSize: 14 }}>{t.parsing}</div>}
-          {error && <div style={{ color: T.red, fontSize: 13, padding: 24, textAlign: "center" }}>{error}</div>}
+          {loading && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ color: T.accent, fontSize: 14 }}>{t.parsing}</div></div>}
+          {error && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ color: T.red, fontSize: 13, padding: 24, textAlign: "center" }}>{error}</div></div>}
 
           {imageData && (
             <div style={{
-              position: "relative",
-              width: imageData.width * scale,
-              height: imageData.height * scale,
-              flexShrink: 0,
-              transform: `translate(${pan.x}px, ${pan.y}px)`,
+              position: "absolute",
+              left: `calc(50% + ${(showHist || showHeader) ? 135 : 0}px)`, top: "50%",
+              transform: `translate(-50%, -50%) translate(${pan.x}px, ${pan.y}px)`,
             }}>
               <canvas ref={canvasRef} style={{
                 display: "block",
