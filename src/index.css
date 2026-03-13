@@ -27,6 +27,17 @@ body {
   width: 100%;
   min-height: 100dvh;
   overflow: hidden;
+  /* Prevent pull-to-refresh and overscroll on mobile */
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent iOS Safari bounce and double-tap zoom on canvas */
+@media (max-width: 767px) {
+  html, body {
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+  }
 }
 
 h1 {

@@ -24,7 +24,7 @@ function LayoutIcon({ type, active }) {
 }
 
 export default function TopBar() {
-  const { state, dispatch, panelRefs } = useWorkspace();
+  const { state, dispatch, panelRefs, isMobile } = useWorkspace();
   const t = L[state.lang];
   const panelCount = countPanels(state.layout);
 
@@ -48,6 +48,52 @@ export default function TopBar() {
     display: "flex", alignItems: "center", justifyContent: "center",
   });
 
+  // Mobile: compact single-row top bar
+  if (isMobile) {
+    const panelRef = panelRefs.current?.["panel-1"]?.current;
+    const fileName = panelRef?.getFileName?.() || "";
+    const imageData = panelRef?.getImageData?.();
+    const wcs = panelRef?.getWcs?.();
+
+    return (
+      <div style={{
+        display: "flex", alignItems: "center", gap: 6, padding: "6px 10px",
+        background: T.surface, borderBottom: `1px solid ${T.border}`, flexShrink: 0,
+        overflow: "hidden", fontFamily: T.font, fontSize: 10,
+      }}>
+        <MobileOpenBtn />
+
+        {fileName && (
+          <span style={{ color: T.textDim, fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: 1 }}>
+            {fileName.length > 16 ? fileName.slice(0, 14) + "\u2026" : fileName}
+            {imageData && (
+              <span style={{ marginLeft: 6, color: T.accent }}>
+                {imageData.width}{"\u00d7"}{imageData.height}{" "}{imageData.depth >= 3 ? "RGB" : ""}{" "}{imageData.bitpix === -32 ? "32f" : imageData.bitpix === -64 ? "64f" : `${imageData.bitpix}b`}
+              </span>
+            )}
+            {wcs && <span style={{ marginLeft: 4, color: T.green, fontSize: 9 }}>WCS</span>}
+          </span>
+        )}
+
+        {!fileName && <span style={{ color: T.textDim, flex: 1, fontSize: 10 }}>Twinkle FITS Viewer</span>}
+
+        {/* Language toggle */}
+        <button onClick={() => dispatch({ type: "SET_LANG", lang: state.lang === "en" ? "cn" : "en" })} style={{
+          background: "transparent", border: `1px solid ${T.border}`, color: T.textDim,
+          borderRadius: 3, padding: "3px 6px", cursor: "pointer",
+          fontFamily: T.font, fontSize: 9, flexShrink: 0,
+        }}>{state.lang === "en" ? "\u4e2d\u6587" : "EN"}</button>
+
+        <button onClick={() => dispatch({ type: "SET_SHOW_HELP", show: true })} style={{
+          background: "transparent", border: `1px solid ${T.border}`, color: T.textDim,
+          borderRadius: "50%", width: 22, height: 22, cursor: "pointer",
+          fontFamily: T.font, fontSize: 12, padding: 0, lineHeight: "20px", flexShrink: 0,
+        }}>?</button>
+      </div>
+    );
+  }
+
+  // Desktop: full top bar
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 6, padding: "4px 14px",
@@ -59,7 +105,7 @@ export default function TopBar() {
         <button key={preset}
           onClick={() => dispatch({ type: "SET_LAYOUT", preset })}
           style={layoutBtnStyle(preset)}
-          title={{ "1": "Single", "2h": "Side by side", "2v": "Stacked", "4": "2×2 Grid" }[preset]}
+          title={{ "1": "Single", "2h": "Side by side", "2v": "Stacked", "4": "2\u00d72 Grid" }[preset]}
         >
           <LayoutIcon type={preset} active={state.layoutPreset === preset} />
         </button>
@@ -97,5 +143,33 @@ export default function TopBar() {
         fontFamily: T.font, fontSize: 12, padding: 0, lineHeight: "20px", flexShrink: 0,
       }}>?</button>
     </div>
+  );
+}
+
+/* Mobile OPEN button — triggers panel-1's file input */
+function MobileOpenBtn() {
+  const { panelRefs } = useWorkspace();
+  const t = L[useWorkspace().state.lang];
+
+  const handleClick = () => {
+    // Create a temporary file input since we can't access panel's internal ref from here
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".fits,.fit,.fts";
+    input.onchange = (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      // Dispatch a custom event that FitsPanel listens for
+      window.dispatchEvent(new CustomEvent("mobile-open-fits", { detail: file }));
+    };
+    input.click();
+  };
+
+  return (
+    <button onClick={handleClick} style={{
+      background: T.accent, color: "#fff", border: "none", borderRadius: 4,
+      padding: "5px 10px", cursor: "pointer", fontFamily: T.font, fontSize: 10,
+      fontWeight: 600, flexShrink: 0,
+    }}>{t.openFits}</button>
   );
 }

@@ -5,6 +5,8 @@ import FitsPanel from "../panel/FitsPanel.jsx";
 import TopBar from "../components/TopBar.jsx";
 import HelpModal from "../components/HelpModal.jsx";
 import BlinkView from "../panel/BlinkView.jsx";
+import MobileBottomBar from "../components/MobileBottomBar.jsx";
+import { useMobile } from "../hooks/useMobile.js";
 import { T } from "../theme.js";
 
 const ALL_PANEL_IDS = ["panel-1", "panel-2", "panel-3", "panel-4"];
@@ -88,6 +90,7 @@ function workspaceReducer(state, action) {
 export default function WorkspaceManager() {
   const [state, dispatch] = useReducer(workspaceReducer, initialState);
   const panelRefs = useRef({});
+  const isMobile = useMobile();
 
   const getPanelRef = useCallback((id) => {
     if (!panelRefs.current[id]) {
@@ -96,17 +99,23 @@ export default function WorkspaceManager() {
     return panelRefs.current[id];
   }, []);
 
-  const contextValue = { state, dispatch, getPanelRef, panelRefs };
-  const visible = VISIBLE_PANELS[state.layoutPreset] || VISIBLE_PANELS["1"];
+  const contextValue = { state, dispatch, getPanelRef, panelRefs, isMobile };
+
+  // On mobile, force single panel
+  const effectivePreset = isMobile ? "1" : state.layoutPreset;
+  const visible = VISIBLE_PANELS[effectivePreset] || VISIBLE_PANELS["1"];
 
   return (
     <WorkspaceContext.Provider value={contextValue}>
       <TopBar />
-      <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+      <div style={{
+        flex: 1, overflow: "hidden", position: "relative",
+        paddingBottom: isMobile ? 44 : 0,
+      }}>
         <div style={{
           width: "100%", height: "100%",
-          display: "grid", gap: 2, background: T.border,
-          ...GRID_STYLES[state.layoutPreset],
+          display: "grid", gap: isMobile ? 0 : 2, background: isMobile ? T.bg : T.border,
+          ...GRID_STYLES[effectivePreset],
         }}>
           {ALL_PANEL_IDS.map(pid => (
             <div key={pid} style={{
@@ -121,8 +130,9 @@ export default function WorkspaceManager() {
             </div>
           ))}
         </div>
-        <BlinkView />
+        {!isMobile && <BlinkView />}
       </div>
+      {isMobile && <MobileBottomBar />}
       <HelpModal />
     </WorkspaceContext.Provider>
   );

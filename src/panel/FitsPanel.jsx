@@ -13,6 +13,7 @@ import { useWorkspace } from "../workspace/WorkspaceContext.js";
 const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
   const t = L[lang];
   const workspace = useWorkspace();
+  const isMobile = workspace?.isMobile;
 
   const [fits, setFits] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -39,6 +40,7 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
   const [flipV, setFlipV] = useState(false);
   const [infoPanelPos, setInfoPanelPos] = useState({ x: 0, y: 0 });
   const [infoDragging, setInfoDragging] = useState(false);
+  const [longPressInfo, setLongPressInfo] = useState(null); // mobile long-press pixel info
   const infoDragStart = useRef({ x: 0, y: 0 });
 
   const canvasRef = useRef(null);
@@ -46,6 +48,8 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
   const containerRef = useRef(null);
   const fileInputRef = useRef(null);
   const gridCanvasRef = useRef(null);
+  const touchStateRef = useRef({ initialDist: null, initialZoom: null, lastPanPos: null });
+  const longPressTimerRef = useRef(null);
 
   const hdu = fits ? fits[activeHdu] : null;
   const imageData = hdu?.data;
@@ -262,6 +266,14 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
     if (e.dataTransfer?.files?.[0]) handleFile(e.dataTransfer.files[0]);
   }, [handleFile]);
 
+  // Listen for mobile file open event (panel-1 only)
+  useEffect(() => {
+    if (id !== "panel-1") return;
+    const handler = (e) => handleFile(e.detail);
+    window.addEventListener("mobile-open-fits", handler);
+    return () => window.removeEventListener("mobile-open-fits", handler);
+  }, [id, handleFile]);
+
   // ResizeObserver
   useEffect(() => {
     const el = containerRef.current;
@@ -375,6 +387,99 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
     }
   };
 
+  // ─── Touch gesture handlers (mobile) ───
+  const handleTouchStart = useCallback((e) => {
+    if (!isMobile || !imageData) return;
+    if (e.touches.length === 2) {
+      // Pinch zoom start
+      clearTimeout(longPressTimerRef.current);
+      setLongPressInfo(null);
+      const d = Math.hypot(
+        e.touches[1].clientX - e.touches[0].clientX,
+        e.touches[1].clientY - e.touches[0].clientY
+      );
+      const curZoom = effectiveZoom === "fit" ? getScale() : Number(effectiveZoom);
+      touchStateRef.current = {
+        initialDist: d,
+        initialZoom: curZoom,
+        lastPanPos: {
+          x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+          y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+        },
+      };
+    } else if (e.touches.length === 1) {
+      // Long press start
+      const touch = e.touches[0];
+      longPressTimerRef.current = setTimeout(() => {
+        // Show pixel info at touch point
+        if (!canvasRef.current || !imageData) return;
+        const rect = canvasRef.current.getBoundingClientRect();
+        const s = getScale();
+        const px = Math.floor((touch.clientX - rect.left) / s);
+        const py = Math.floor((touch.clientY - rect.top) / s);
+        if (px >= 0 && px < imageData.width && py >= 0 && py < imageData.height) {
+          const si = (imageData.height - 1 - py) * imageData.width + px;
+          const values = imageData.channels.map(ch => ch[si]);
+          const fitsX = px + 1;
+          const fitsY = imageData.height - py;
+          let world = null;
+          if (wcs) world = pixelToWorld(wcs, px, imageData.height - 1 - py);
+          setLongPressInfo({
+            x: fitsX, y: fitsY, values, world,
+            screenX: touch.clientX, screenY: touch.clientY,
+          });
+        }
+      }, 500);
+      // Also set up single-finger pan if zoomed in
+      if (effectiveZoom !== "fit") {
+        touchStateRef.current.lastPanPos = { x: touch.clientX, y: touch.clientY };
+      }
+    }
+  }, [isMobile, imageData, effectiveZoom, getScale, wcs]);
+
+  const handleTouchMove = useCallback((e) => {
+    if (!isMobile || !imageData) return;
+    clearTimeout(longPressTimerRef.current);
+    setLongPressInfo(null);
+    if (e.touches.length === 2 && touchStateRef.current.initialDist) {
+      e.preventDefault();
+      const d = Math.hypot(
+        e.touches[1].clientX - e.touches[0].clientX,
+        e.touches[1].clientY - e.touches[0].clientY
+      );
+      const scaleRatio = d / touchStateRef.current.initialDist;
+      const newZoom = Math.max(0.1, Math.min(8, +(touchStateRef.current.initialZoom * scaleRatio).toFixed(4)));
+      setZoom(newZoom);
+      // Two-finger pan
+      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      if (touchStateRef.current.lastPanPos) {
+        const dx = cx - touchStateRef.current.lastPanPos.x;
+        const dy = cy - touchStateRef.current.lastPanPos.y;
+        setPan(p => ({ x: p.x + dx, y: p.y + dy }));
+      }
+      touchStateRef.current.lastPanPos = { x: cx, y: cy };
+    } else if (e.touches.length === 1 && effectiveZoom !== "fit" && touchStateRef.current.lastPanPos) {
+      // Single-finger pan when zoomed in
+      e.preventDefault();
+      const touch = e.touches[0];
+      const dx = touch.clientX - touchStateRef.current.lastPanPos.x;
+      const dy = touch.clientY - touchStateRef.current.lastPanPos.y;
+      setPan(p => ({ x: p.x + dx, y: p.y + dy }));
+      touchStateRef.current.lastPanPos = { x: touch.clientX, y: touch.clientY };
+    }
+  }, [isMobile, imageData, effectiveZoom]);
+
+  const handleTouchEnd = useCallback(() => {
+    clearTimeout(longPressTimerRef.current);
+    touchStateRef.current = { initialDist: null, initialZoom: null, lastPanPos: null };
+    // Don't clear longPressInfo here — keep it visible until next tap
+  }, []);
+
+  const handleSingleTap = useCallback(() => {
+    if (longPressInfo) setLongPressInfo(null);
+  }, [longPressInfo]);
+
   const scale = getScale();
 
   // Crosshair from other panels
@@ -409,10 +514,11 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
         width: "100%", height: "100%", display: "flex", flexDirection: "column",
         background: T.bg, color: T.text, fontFamily: T.font, fontSize: 12,
         overflow: "hidden", userSelect: "none",
-        outline: isActive ? `2px solid ${T.accent}` : "none",
+        outline: !isMobile && isActive ? `2px solid ${T.accent}` : "none",
         outlineOffset: "-2px",
       }}>
-      {/* ─── Top Bar ─── */}
+      {/* ─── Top Bar (desktop only) ─── */}
+      {!isMobile && (
       <div style={{
         display: "flex", alignItems: "center", gap: 10, padding: "4px 14px",
         background: T.surface, borderBottom: `1px solid ${T.border}`, flexShrink: 0,
@@ -488,9 +594,10 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
           </>
         )}
       </div>
+      )}
 
-      {/* ─── Export Bar ─── */}
-      {showExport && imageData && (
+      {/* ─── Export Bar (desktop only) ─── */}
+      {!isMobile && showExport && imageData && (
         <div style={{
           display: "flex", alignItems: "center", gap: 12, padding: "6px 14px",
           background: T.surfaceAlt, borderBottom: `1px solid ${T.border}`, fontSize: 11,
@@ -516,8 +623,8 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
 
       {/* ─── Main Area ─── */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden", position: "relative" }}>
-        {/* ─── Info Panel (floating overlay) ─── */}
-        {imageData && (showHist || showHeader) && (
+        {/* ─── Info Panel (floating overlay, desktop only) ─── */}
+        {!isMobile && imageData && (showHist || showHeader) && (
           <div style={{
             position: "absolute", top: infoPanelPos.y, left: infoPanelPos.x, zIndex: 10,
             width: 270, maxHeight: "calc(100% - 8px)", borderRadius: 6,
@@ -662,20 +769,29 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
         {/* ─── Canvas ─── */}
         <div ref={containerRef}
           onDrop={handleDrop} onDragOver={e => e.preventDefault()}
-          onMouseDown={handleMouseDown} onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp} onMouseLeave={handleMouseLeave}
-          onWheel={handleWheel}
+          onMouseDown={!isMobile ? handleMouseDown : undefined}
+          onMouseMove={!isMobile ? handleMouseMove : undefined}
+          onMouseUp={!isMobile ? handleMouseUp : undefined}
+          onMouseLeave={!isMobile ? handleMouseLeave : undefined}
+          onWheel={!isMobile ? handleWheel : undefined}
+          onTouchStart={isMobile ? handleTouchStart : undefined}
+          onTouchMove={isMobile ? handleTouchMove : undefined}
+          onTouchEnd={isMobile ? handleTouchEnd : undefined}
+          onClick={isMobile ? handleSingleTap : undefined}
           style={{
             flex: 1, overflow: "hidden", position: "relative",
-            cursor: dragging ? "grabbing" : (effectiveZoom !== "fit" ? "grab" : "crosshair"),
+            cursor: isMobile ? "default" : (dragging ? "grabbing" : (effectiveZoom !== "fit" ? "grab" : "crosshair")),
+            touchAction: isMobile ? "none" : "auto",
           }}
         >
           {!imageData && !loading && (
             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ textAlign: "center", padding: 48, border: `2px dashed ${T.border}`, borderRadius: 12, color: T.textDim }}>
-                <div style={{ fontSize: 40, marginBottom: 16, opacity: 0.3 }}>{"\u2726"}</div>
-                <div style={{ fontSize: 14, marginBottom: 8 }}>{t.dropHere}</div>
-                <div style={{ fontSize: 11 }}>{t.orClick}</div>
+              <div style={{ textAlign: "center", padding: isMobile ? 32 : 48, border: `2px dashed ${T.border}`, borderRadius: 12, color: T.textDim }}>
+                <div style={{ fontSize: isMobile ? 32 : 40, marginBottom: 16, opacity: 0.3 }}>{"\u2726"}</div>
+                <div style={{ fontSize: isMobile ? 13 : 14, marginBottom: 8 }}>
+                  {isMobile ? t.openFits : t.dropHere}
+                </div>
+                {!isMobile && <div style={{ fontSize: 11 }}>{t.orClick}</div>}
                 <div style={{ fontSize: 10, marginTop: 12, color: T.accentDim }}>
                   {t.formatInfo}
                 </div>
@@ -733,8 +849,8 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
             );
           })()}
 
-          {/* Pixel info bar */}
-          {cursorInfo && (
+          {/* Pixel info bar (desktop) */}
+          {!isMobile && cursorInfo && (
             <div style={{
               position: "absolute", bottom: 8, left: 8,
               background: "rgba(0,0,0,0.88)", padding: "5px 12px",
@@ -759,6 +875,33 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
                     Dec {formatDec(cursorInfo.world.dec)}
                   </span>
                 </>
+              )}
+            </div>
+          )}
+
+          {/* Long-press pixel info popup (mobile) */}
+          {isMobile && longPressInfo && (
+            <div style={{
+              position: "fixed",
+              left: Math.min(longPressInfo.screenX + 12, window.innerWidth - 220),
+              top: Math.max(8, longPressInfo.screenY - 80),
+              background: "rgba(0,0,0,0.92)", padding: "8px 14px",
+              borderRadius: 6, fontSize: 11, color: T.textDim,
+              zIndex: 50, backdropFilter: "blur(8px)",
+              border: `1px solid ${T.border}`, maxWidth: 210,
+            }}>
+              <div style={{ color: T.text, marginBottom: 4 }}>({longPressInfo.x}, {longPressInfo.y})</div>
+              {longPressInfo.values.map((v, i) => (
+                <div key={i} style={{ color: imageData?.depth >= 3 ? ["#ff8888","#88ff88","#8888ff"][i] : T.text }}>
+                  {imageData?.depth >= 3 ? ["R","G","B"][i]+": " : t.val+": "}
+                  {typeof v === "number" ? v.toExponential(4) : "\u2014"}
+                </div>
+              ))}
+              {longPressInfo.world && (
+                <div style={{ marginTop: 4, borderTop: `1px solid ${T.border}`, paddingTop: 4 }}>
+                  <div style={{ color: T.amber }}>RA {formatRA(longPressInfo.world.ra)}</div>
+                  <div style={{ color: T.amber }}>Dec {formatDec(longPressInfo.world.dec)}</div>
+                </div>
               )}
             </div>
           )}
