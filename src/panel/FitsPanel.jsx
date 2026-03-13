@@ -448,8 +448,15 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
         e.touches[1].clientY - e.touches[0].clientY
       );
       const scaleRatio = d / touchStateRef.current.initialDist;
-      const newZoom = Math.max(0.1, Math.min(8, +(touchStateRef.current.initialZoom * scaleRatio).toFixed(4)));
-      setZoom(newZoom);
+      const fitScale = getScale();
+      const rawZoom = +(touchStateRef.current.initialZoom * scaleRatio).toFixed(4);
+      // Snap to "fit" when pinching out near or below the fit scale
+      if (rawZoom <= fitScale * 1.05) {
+        setZoom("fit");
+        setPan({ x: 0, y: 0 });
+      } else {
+        setZoom(Math.min(8, rawZoom));
+      }
       // Two-finger pan
       const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
       const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
@@ -468,7 +475,7 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
       setPan(p => ({ x: p.x + dx, y: p.y + dy }));
       touchStateRef.current.lastPanPos = { x: touch.clientX, y: touch.clientY };
     }
-  }, [isMobile, imageData, effectiveZoom]);
+  }, [isMobile, imageData, effectiveZoom, getScale]);
 
   const handleTouchEnd = useCallback(() => {
     clearTimeout(longPressTimerRef.current);
