@@ -451,15 +451,9 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
         e.touches[1].clientY - e.touches[0].clientY
       );
       const scaleRatio = d / touchStateRef.current.initialDist;
-      const fitScale = getFitScale();
-      const rawZoom = +(touchStateRef.current.initialZoom * scaleRatio).toFixed(4);
-      // Snap to "fit" when pinching out near or below the fit scale
-      if (rawZoom <= fitScale * 1.05) {
-        setZoom("fit");
-        setPan({ x: 0, y: 0 });
-      } else {
-        setZoom(Math.min(8, rawZoom));
-      }
+      const rawZoom = Math.max(0.01, Math.min(8, +(touchStateRef.current.initialZoom * scaleRatio).toFixed(4)));
+      setZoom(rawZoom);
+      touchStateRef.current.lastZoom = rawZoom;
       // Two-finger pan
       const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
       const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
@@ -478,13 +472,22 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
       setPan(p => ({ x: p.x + dx, y: p.y + dy }));
       touchStateRef.current.lastPanPos = { x: touch.clientX, y: touch.clientY };
     }
-  }, [isMobile, imageData, effectiveZoom, getFitScale]);
+  }, [isMobile, imageData, effectiveZoom]);
 
   const handleTouchEnd = useCallback(() => {
     clearTimeout(longPressTimerRef.current);
-    touchStateRef.current = { initialDist: null, initialZoom: null, lastPanPos: null };
+    // Snap to "fit" if pinch ended at or below the fit scale
+    const lastZoom = touchStateRef.current.lastZoom;
+    if (lastZoom != null) {
+      const fitScale = getFitScale();
+      if (lastZoom <= fitScale * 1.05) {
+        setZoom("fit");
+        setPan({ x: 0, y: 0 });
+      }
+    }
+    touchStateRef.current = { initialDist: null, initialZoom: null, lastPanPos: null, lastZoom: null };
     // Don't clear longPressInfo here — keep it visible until next tap
-  }, []);
+  }, [getFitScale]);
 
   const handleSingleTap = useCallback(() => {
     if (longPressInfo) setLongPressInfo(null);
