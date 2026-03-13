@@ -16,6 +16,8 @@ export const L = {
     splitRight: "SPLIT \u25b6", splitDown: "SPLIT \u25bc", closePanel: "\u2715",
     syncZoom: "SYNC", syncCursor: "CURSOR", blink: "BLINK",
     blinkExit: "EXIT BLINK", blinkAuto: "AUTO", blinkInterval: "INTERVAL",
+    rotateCW: "Rotate 90\u00b0 CW", rotateCCW: "Rotate 90\u00b0 CCW",
+    flipH: "Flip Horizontal", flipV: "Flip Vertical",
     panelLabel: "Panel", noFile: "No file", maxPanels: "Max 4 panels",
     glossary: [
       { section: "FITS File & Header (HDR)", items: [
@@ -65,6 +67,8 @@ export const L = {
     splitRight: "\u53f3\u5206\u5272 \u25b6", splitDown: "\u4e0b\u5206\u5272 \u25bc", closePanel: "\u2715",
     syncZoom: "\u540c\u6b65", syncCursor: "\u5149\u6807", blink: "\u95ea\u70c1\u5bf9\u6bd4",
     blinkExit: "\u9000\u51fa\u95ea\u70c1", blinkAuto: "\u81ea\u52a8", blinkInterval: "\u95f4\u9694",
+    rotateCW: "\u987a\u65f6\u9488\u65cb\u8f6c 90\u00b0", rotateCCW: "\u9006\u65f6\u9488\u65cb\u8f6c 90\u00b0",
+    flipH: "\u6c34\u5e73\u7ffb\u8f6c", flipV: "\u5782\u76f4\u7ffb\u8f6c",
     panelLabel: "\u9762\u677f", noFile: "\u672a\u52a0\u8f7d", maxPanels: "\u6700\u591a 4 \u4e2a\u9762\u677f",
     glossary: [
       { section: "FITS \u6587\u4ef6 & \u5934\u4fe1\u606f (HDR)", items: [

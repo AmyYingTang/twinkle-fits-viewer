@@ -34,6 +34,9 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
   const [showExport, setShowExport] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
   const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
+  const [rotation, setRotation] = useState(0);       // 0, 90, 180, 270
+  const [flipH, setFlipH] = useState(false);
+  const [flipV, setFlipV] = useState(false);
   const [infoPanelPos, setInfoPanelPos] = useState({ x: 0, y: 0 });
   const [infoDragging, setInfoDragging] = useState(false);
   const infoDragStart = useRef({ x: 0, y: 0 });
@@ -459,6 +462,18 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
               </span>
             </div>
 
+            {/* Rotate & Flip */}
+            <div style={{ display: "flex", gap: 3, marginLeft: 10, flexShrink: 0 }}>
+              <Btn onClick={() => setRotation(r => (r + 270) % 360)} title={t.rotateCCW}
+                style={{ fontSize: 11, padding: "2px 5px" }}>{"\u21b6"}</Btn>
+              <Btn onClick={() => setRotation(r => (r + 90) % 360)} title={t.rotateCW}
+                style={{ fontSize: 11, padding: "2px 5px" }}>{"\u21b7"}</Btn>
+              <Btn active={flipH} onClick={() => setFlipH(f => !f)} title={t.flipH}
+                style={{ fontSize: 9, padding: "2px 5px" }}>{"\u2194"}</Btn>
+              <Btn active={flipV} onClick={() => setFlipV(f => !f)} title={t.flipV}
+                style={{ fontSize: 9, padding: "2px 5px" }}>{"\u2195"}</Btn>
+            </div>
+
             {/* Panels & features */}
             <div style={{ display: "flex", gap: 3, marginLeft: 10, flexShrink: 0 }}>
               <Btn active={showHist} onClick={() => setShowHist(!showHist)}>{t.hist}</Btn>
@@ -675,7 +690,7 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
             <div style={{
               position: "absolute",
               left: "50%", top: "50%",
-              transform: `translate(-50%, -50%) translate(${pan.x}px, ${pan.y}px)`,
+              transform: `translate(-50%, -50%) translate(${pan.x}px, ${pan.y}px) rotate(${rotation}deg) scaleX(${flipH ? -1 : 1}) scaleY(${flipV ? -1 : 1})`,
             }}>
               <canvas ref={canvasRef} style={{
                 display: "block",
