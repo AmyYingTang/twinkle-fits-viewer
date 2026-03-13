@@ -16,7 +16,8 @@ export default function MobileBottomBar() {
   const t = L[state.lang];
   const [activeTab, setActiveTab] = useState(null);
 
-  const panelRef = panelRefs.current?.["panel-1"]?.current;
+  // Read panelRef lazily via getter to avoid stale closures
+  const getPanelRef = () => panelRefs.current?.["panel-1"]?.current;
 
   const handleTab = (tab) => {
     setActiveTab(prev => prev === tab ? null : tab);
@@ -33,26 +34,28 @@ export default function MobileBottomBar() {
     <>
       {/* Bottom Sheet */}
       <BottomSheet open={!!activeTab} onClose={() => setActiveTab(null)}>
-        {activeTab === "stretch" && <StretchSheet panelRef={panelRef} lang={state.lang} />}
-        {activeTab === "stats" && <StatsSheet panelRef={panelRef} lang={state.lang} />}
-        {activeTab === "header" && <HeaderSheet panelRef={panelRef} lang={state.lang} />}
-        {activeTab === "export" && <ExportSheet panelRef={panelRef} lang={state.lang} />}
+        {activeTab === "stretch" && <StretchSheet getPanelRef={getPanelRef} lang={state.lang} />}
+        {activeTab === "stats" && <StatsSheet getPanelRef={getPanelRef} lang={state.lang} />}
+        {activeTab === "header" && <HeaderSheet getPanelRef={getPanelRef} lang={state.lang} />}
+        {activeTab === "export" && <ExportSheet getPanelRef={getPanelRef} lang={state.lang} />}
       </BottomSheet>
 
       {/* Tab Bar */}
       <div style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, height: 44,
+        position: "fixed", bottom: 0, left: 0, right: 0,
+        height: "calc(56px + env(safe-area-inset-bottom, 0px))",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
         display: "flex", alignItems: "center", justifyContent: "space-around",
         background: T.surface, borderTop: `1px solid ${T.border}`,
         zIndex: 110, fontFamily: T.font,
       }}>
         {TABS.map(tab => (
           <button key={tab} onClick={() => handleTab(tab)} style={{
-            flex: 1, height: 44, display: "flex", alignItems: "center", justifyContent: "center",
+            flex: 1, height: 56, display: "flex", alignItems: "center", justifyContent: "center",
             background: activeTab === tab ? `${T.accent}22` : "transparent",
             color: activeTab === tab ? T.accent : T.textDim,
             border: "none", cursor: "pointer", fontFamily: T.font,
-            fontSize: 10, fontWeight: 600, letterSpacing: "0.06em",
+            fontSize: 11, fontWeight: 600, letterSpacing: "0.06em",
             borderTop: activeTab === tab ? `2px solid ${T.accent}` : "2px solid transparent",
           }}>
             {tabLabels[tab]}
@@ -64,20 +67,20 @@ export default function MobileBottomBar() {
 }
 
 /* ── Stretch Sheet ── */
-function StretchSheet({ panelRef, lang }) {
+function StretchSheet({ getPanelRef, lang }) {
   const t = L[lang];
   const histCanvasRef = useRef(null);
 
+  const panelRef = getPanelRef();
   const statsAndStretch = panelRef?.getStatsAndStretch?.();
   const currentStretch = panelRef?.getCurrentStretch?.();
-  const autoMode = panelRef?.getAutoMode?.();
-  const colorMap = panelRef?.getColorMap?.();
-  const manualLo = panelRef?.getManualLo?.();
-  const manualHi = panelRef?.getManualHi?.();
-  const manualMid = panelRef?.getManualMid?.();
 
-  // Force re-render by reading values
-  const [, forceUpdate] = useState(0);
+  // Local state for immediate UI updates (avoids stale-ref timing issues)
+  const [autoMode, setAutoModeLocal] = useState(() => panelRef?.getAutoMode?.() ?? true);
+  const [colorMap, setColorMapLocal] = useState(() => panelRef?.getColorMap?.() ?? "gray");
+  const [manualLo, setManualLoLocal] = useState(() => panelRef?.getManualLo?.() ?? 0);
+  const [manualHi, setManualHiLocal] = useState(() => panelRef?.getManualHi?.() ?? 1);
+  const [manualMid, setManualMidLocal] = useState(() => panelRef?.getManualMid?.() ?? 0.5);
 
   useEffect(() => {
     if (!histCanvasRef.current || !statsAndStretch || !currentStretch) return;
@@ -88,11 +91,11 @@ function StretchSheet({ panelRef, lang }) {
     return <div style={{ color: T.textDim, padding: 16, textAlign: "center" }}>No image loaded</div>;
   }
 
-  const handleSetAutoMode = (v) => { panelRef?.setAutoMode?.(v); forceUpdate(n => n + 1); };
-  const handleSetManualLo = (v) => { panelRef?.setManualLo?.(v); forceUpdate(n => n + 1); };
-  const handleSetManualHi = (v) => { panelRef?.setManualHi?.(v); forceUpdate(n => n + 1); };
-  const handleSetManualMid = (v) => { panelRef?.setManualMid?.(v); forceUpdate(n => n + 1); };
-  const handleSetColorMap = (v) => { panelRef?.setColorMap?.(v); forceUpdate(n => n + 1); };
+  const handleSetAutoMode = (v) => { getPanelRef()?.setAutoMode?.(v); setAutoModeLocal(v); };
+  const handleSetManualLo = (v) => { getPanelRef()?.setManualLo?.(v); setManualLoLocal(v); };
+  const handleSetManualHi = (v) => { getPanelRef()?.setManualHi?.(v); setManualHiLocal(v); };
+  const handleSetManualMid = (v) => { getPanelRef()?.setManualMid?.(v); setManualMidLocal(v); };
+  const handleSetColorMap = (v) => { getPanelRef()?.setColorMap?.(v); setColorMapLocal(v); };
 
   const switchToManual = () => {
     handleSetAutoMode(false);
@@ -100,9 +103,12 @@ function StretchSheet({ panelRef, lang }) {
       const s = statsAndStretch.stats[0];
       const range = s.max - s.min || 1;
       const st = statsAndStretch.stretch;
-      handleSetManualLo(((Array.isArray(st.lo) ? st.lo[0] : st.lo) - s.min) / range);
-      handleSetManualHi(((Array.isArray(st.hi) ? st.hi[0] : st.hi) - s.min) / range);
-      handleSetManualMid(Array.isArray(st.midtone) ? st.midtone[0] : st.midtone);
+      const lo = ((Array.isArray(st.lo) ? st.lo[0] : st.lo) - s.min) / range;
+      const hi = ((Array.isArray(st.hi) ? st.hi[0] : st.hi) - s.min) / range;
+      const mid = Array.isArray(st.midtone) ? st.midtone[0] : st.midtone;
+      handleSetManualLo(lo);
+      handleSetManualHi(hi);
+      handleSetManualMid(mid);
     }
   };
 
@@ -120,21 +126,39 @@ function StretchSheet({ panelRef, lang }) {
         style={{ width: "100%", height: 80, borderRadius: 4, marginBottom: 8 }} />
 
       {!autoMode && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 14 }}>
           {[
             [t.shadow, manualLo, handleSetManualLo, T.red, 0, 1],
             [t.midtone, manualMid, handleSetManualMid, T.accent, 0.001, 0.999],
             [t.highlight, manualHi, handleSetManualHi, T.green, 0, 1],
           ].map(([label, val, setter, color, min, max]) => (
-            <label key={label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
-              <span style={{ color, width: 56 }}>{label}</span>
-              <input type="range" min={min} max={max} step={0.001} value={val}
-                onChange={e => setter(Number(e.target.value))}
-                style={{ flex: 1, accentColor: color, height: 24 }} />
-              <span style={{ color: T.textDim, fontSize: 10, minWidth: 40, textAlign: "right" }}>
-                {val?.toFixed(3)}
-              </span>
-            </label>
+            <div key={label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color, fontSize: 11, fontWeight: 600 }}>{label}</span>
+                <span style={{ color: T.textDim, fontSize: 10, fontVariantNumeric: "tabular-nums" }}>
+                  {val?.toFixed(3)}
+                </span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button onClick={() => setter(Math.max(min, +(val - 0.005).toFixed(3)))}
+                  style={{
+                    width: 32, height: 32, borderRadius: 8, border: `1px solid ${T.border}`,
+                    background: T.surfaceAlt, color, cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontFamily: T.font, fontSize: 16, fontWeight: 700, flexShrink: 0,
+                  }}>{"\u2212"}</button>
+                <input type="range" min={min} max={max} step={0.001} value={val}
+                  onChange={e => setter(Number(e.target.value))}
+                  style={{ flex: 1, accentColor: color, height: 28 }} />
+                <button onClick={() => setter(Math.min(max, +(val + 0.005).toFixed(3)))}
+                  style={{
+                    width: 32, height: 32, borderRadius: 8, border: `1px solid ${T.border}`,
+                    background: T.surfaceAlt, color, cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontFamily: T.font, fontSize: 16, fontWeight: 700, flexShrink: 0,
+                  }}>+</button>
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -151,8 +175,9 @@ function StretchSheet({ panelRef, lang }) {
 }
 
 /* ── Stats Sheet ── */
-function StatsSheet({ panelRef, lang }) {
+function StatsSheet({ getPanelRef, lang }) {
   const t = L[lang];
+  const panelRef = getPanelRef();
   const statsAndStretch = panelRef?.getStatsAndStretch?.();
   const wcs = panelRef?.getWcs?.();
   const header = panelRef?.getHeader?.();
@@ -207,9 +232,9 @@ function StatsSheet({ panelRef, lang }) {
 }
 
 /* ── Header Sheet ── */
-function HeaderSheet({ panelRef, lang }) {
+function HeaderSheet({ getPanelRef, lang }) {
   const t = L[lang];
-  const header = panelRef?.getHeader?.();
+  const header = getPanelRef()?.getHeader?.();
 
   if (!header) {
     return <div style={{ color: T.textDim, padding: 16, textAlign: "center" }}>No image loaded</div>;
@@ -233,8 +258,9 @@ function HeaderSheet({ panelRef, lang }) {
 }
 
 /* ── Export Sheet ── */
-function ExportSheet({ panelRef, lang }) {
+function ExportSheet({ getPanelRef, lang }) {
   const t = L[lang];
+  const panelRef = getPanelRef();
   const imageData = panelRef?.getImageData?.();
   const canvasEl = panelRef?.getCanvasRef?.();
   const fileName = panelRef?.getFileName?.();

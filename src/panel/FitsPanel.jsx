@@ -785,7 +785,18 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
           }}
         >
           {!imageData && !loading && (
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div
+              onClick={isMobile ? () => {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = ".fits,.fit,.fts";
+                input.onchange = (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) window.dispatchEvent(new CustomEvent("mobile-open-fits", { detail: file }));
+                };
+                input.click();
+              } : undefined}
+              style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", cursor: isMobile ? "pointer" : "default" }}>
               <div style={{ textAlign: "center", padding: isMobile ? 32 : 48, border: `2px dashed ${T.border}`, borderRadius: 12, color: T.textDim }}>
                 <div style={{ fontSize: isMobile ? 32 : 40, marginBottom: 16, opacity: 0.3 }}>{"\u2726"}</div>
                 <div style={{ fontSize: isMobile ? 13 : 14, marginBottom: 8 }}>
