@@ -2,17 +2,17 @@
 
 A browser-based FITS file viewer for astrophotography. Inspect stacked masters and processed results with proper autostretch, multi-panel comparison, WCS coordinates, and export. Also available as a mobile PWA — install it on your phone from a single link.
 
-**Live app:** `https://YOUR_DOMAIN_HERE`
+**Live app:** [https://twinkle.amytang.app](https://twinkle.amytang.app)
 
 ## Quick Start
 
 ### Desktop
 
-Open `YOUR_DOMAIN_HERE` in any modern browser. Drag & drop a `.fits` file onto the viewer — done.
+Open `twinkle.amytang.app` in any modern browser. Drag & drop a `.fits` file onto the viewer — done.
 
 ### Mobile
 
-1. Open `YOUR_DOMAIN_HERE` in Safari (iOS) or Chrome (Android)
+1. Open `twinkle.amytang.app` in Safari (iOS) or Chrome (Android)
 2. **Install as app** — tap **Share → Add to Home Screen** (Safari) or **⋮ → Add to Home screen** (Chrome)
 3. Open from the home screen icon — it runs full-screen, **works offline**, and auto-updates when new versions are deployed
 4. Tap `OPEN` to load a FITS file from your device
@@ -47,7 +47,7 @@ Open `YOUR_DOMAIN_HERE` in any modern browser. Drag & drop a `.fits` file onto t
 
 ### Mobile
 
-1. Visit `YOUR_DOMAIN_HERE` in Safari (iOS) or Chrome (Android)
+1. Visit `twinkle.amytang.app` in Safari (iOS) or Chrome (Android)
 2. Open a FITS file from your device
 3. Pinch to zoom, drag to pan
 4. Long press on the image to see pixel values and coordinates
@@ -136,12 +136,12 @@ The app is deployed on Cloudflare Pages with these settings:
 Auto-deploy is connected to the `main` branch. Every `git push origin main` triggers a new deployment. Cloudflare provides a default URL (`*.pages.dev`) and a custom domain is configured to point to it.
 
 ```
-GitHub repo  →  git push  →  Cloudflare Pages auto-build  →  live at YOUR_DOMAIN_HERE
+GitHub repo  →  git push  →  Cloudflare Pages auto-build  →  live at twinkle.amytang.app
 ```
 
 ### Custom Domain
 
-The custom domain `YOUR_DOMAIN_HERE` is managed via Cloudflare DNS. Configuration is in Cloudflare Pages → Custom domains.
+The custom domain `twinkle.amytang.app` is managed via Cloudflare DNS. Configuration is in Cloudflare Pages → Custom domains.
 
 ### Roadmap
 
