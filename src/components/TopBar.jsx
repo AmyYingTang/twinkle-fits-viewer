@@ -57,7 +57,8 @@ export default function TopBar() {
 
     return (
       <div style={{
-        display: "flex", alignItems: "center", gap: 6, padding: "6px 10px",
+        display: "flex", alignItems: "center", gap: 6,
+        padding: "6px 10px", paddingTop: "calc(6px + env(safe-area-inset-top, 0px))",
         background: T.surface, borderBottom: `1px solid ${T.border}`, flexShrink: 0,
         overflow: "hidden", fontFamily: T.font, fontSize: 10,
       }}>

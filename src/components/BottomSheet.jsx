@@ -106,8 +106,8 @@ export default function BottomSheet({ open, onClose, children }) {
       }} />
       {/* Sheet */}
       <div ref={sheetRef} style={{
-        position: "fixed", bottom: "calc(56px + env(safe-area-inset-bottom, 0px))", left: 0, right: 0,
-        height: `calc(${heightFrac * 100}vh - 56px - env(safe-area-inset-bottom, 0px))`,
+        position: "fixed", bottom: "calc(44px + env(safe-area-inset-bottom, 0px))", left: 0, right: 0,
+        height: `calc(${heightFrac * 100}vh - 44px - env(safe-area-inset-bottom, 0px))`,
         background: T.surface, borderTopLeftRadius: 12, borderTopRightRadius: 12,
         zIndex: 100, display: "flex", flexDirection: "column",
         boxShadow: "0 -4px 24px rgba(0,0,0,0.4)",

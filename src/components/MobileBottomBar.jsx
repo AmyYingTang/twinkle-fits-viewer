@@ -43,7 +43,7 @@ export default function MobileBottomBar() {
       {/* Tab Bar */}
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0,
-        height: "calc(56px + env(safe-area-inset-bottom, 0px))",
+        height: "calc(44px + env(safe-area-inset-bottom, 0px))",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
         display: "flex", alignItems: "center", justifyContent: "space-around",
         background: T.surface, borderTop: `1px solid ${T.border}`,
@@ -51,11 +51,11 @@ export default function MobileBottomBar() {
       }}>
         {TABS.map(tab => (
           <button key={tab} onClick={() => handleTab(tab)} style={{
-            flex: 1, height: 56, display: "flex", alignItems: "center", justifyContent: "center",
+            flex: 1, height: 44, display: "flex", alignItems: "center", justifyContent: "center",
             background: activeTab === tab ? `${T.accent}22` : "transparent",
             color: activeTab === tab ? T.accent : T.textDim,
             border: "none", cursor: "pointer", fontFamily: T.font,
-            fontSize: 11, fontWeight: 600, letterSpacing: "0.06em",
+            fontSize: 10, fontWeight: 600, letterSpacing: "0.06em",
             borderTop: activeTab === tab ? `2px solid ${T.accent}` : "2px solid transparent",
           }}>
             {tabLabels[tab]}

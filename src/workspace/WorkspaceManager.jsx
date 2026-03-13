@@ -110,7 +110,7 @@ export default function WorkspaceManager() {
       <TopBar />
       <div style={{
         flex: 1, overflow: "hidden", position: "relative",
-        paddingBottom: isMobile ? "calc(56px + env(safe-area-inset-bottom, 0px))" : 0,
+        paddingBottom: isMobile ? "calc(44px + env(safe-area-inset-bottom, 0px))" : 0,
       }}>
         <div style={{
           width: "100%", height: "100%",
