@@ -317,16 +317,19 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
     if (sz !== "fit") setZoom(sz);
   }, [workspace?.state?.sharedZoom, syncZoomPan]);
 
+  // Always returns the "fit" scale (image scaled to fill container), regardless of current zoom
+  const getFitScale = useCallback(() => {
+    if (!containerSize.w || !containerSize.h || !imageData) return 1;
+    const ch = containerSize.h - FIT_PAD * 2;
+    const cw = containerSize.w - FIT_PAD * 2;
+    return Math.min(ch / imageData.height, cw / imageData.width);
+  }, [imageData, containerSize]);
+
   const getScale = useCallback(() => {
     if (!containerSize.w || !containerSize.h || !imageData) return 1;
-    const z = effectiveZoom;
-    if (z === "fit") {
-      const ch = containerSize.h - FIT_PAD * 2;
-      const cw = containerSize.w - FIT_PAD * 2;
-      return Math.min(ch / imageData.height, cw / imageData.width);
-    }
-    return Number(z);
-  }, [effectiveZoom, imageData, containerSize]);
+    if (effectiveZoom === "fit") return getFitScale();
+    return Number(effectiveZoom);
+  }, [effectiveZoom, imageData, containerSize, getFitScale]);
 
   const handleMouseDown = (e) => {
     if (effectiveZoom !== "fit") { setDragging(true); setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y }); }
@@ -448,7 +451,7 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
         e.touches[1].clientY - e.touches[0].clientY
       );
       const scaleRatio = d / touchStateRef.current.initialDist;
-      const fitScale = getScale();
+      const fitScale = getFitScale();
       const rawZoom = +(touchStateRef.current.initialZoom * scaleRatio).toFixed(4);
       // Snap to "fit" when pinching out near or below the fit scale
       if (rawZoom <= fitScale * 1.05) {
@@ -475,7 +478,7 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
       setPan(p => ({ x: p.x + dx, y: p.y + dy }));
       touchStateRef.current.lastPanPos = { x: touch.clientX, y: touch.clientY };
     }
-  }, [isMobile, imageData, effectiveZoom, getScale]);
+  }, [isMobile, imageData, effectiveZoom, getFitScale]);
 
   const handleTouchEnd = useCallback(() => {
     clearTimeout(longPressTimerRef.current);
