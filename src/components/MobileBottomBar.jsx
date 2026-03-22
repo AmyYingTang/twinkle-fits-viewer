@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { T } from "../theme.js";
 import { L } from "../i18n.js";
 import { Btn } from "./Btn.jsx";
@@ -8,6 +8,31 @@ import { exportPNG } from "../utils/exportFits.js";
 import { formatRA, formatDec } from "../utils/wcs.js";
 import BottomSheet from "./BottomSheet.jsx";
 import { useWorkspace } from "../workspace/WorkspaceContext.js";
+
+/* Long-press hook: fires callback on click, then repeats at 100ms while held */
+function useLongPress(callback) {
+  const intervalRef = useRef(null);
+  const callbackRef = useRef(callback);
+  callbackRef.current = callback;
+
+  const stop = useCallback(() => {
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+  }, []);
+
+  const start = useCallback(() => {
+    callbackRef.current();
+    intervalRef.current = setInterval(() => callbackRef.current(), 100);
+  }, []);
+
+  useEffect(() => stop, [stop]);
+
+  return {
+    onPointerDown: start,
+    onPointerUp: stop,
+    onPointerLeave: stop,
+    onPointerCancel: stop,
+  };
+}
 
 const TABS = ["stretch", "stats", "header", "export"];
 
@@ -66,6 +91,77 @@ export default function MobileBottomBar() {
   );
 }
 
+/* ── Mobile range slider styles ── */
+const mobileRangeCSS = `
+input[type=range].mobile-stretch {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  height: 44px;
+  touch-action: none;
+}
+input[type=range].mobile-stretch::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 4px;
+  background: ${T.surfaceAlt};
+}
+input[type=range].mobile-stretch::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--thumb-color, ${T.accent});
+  border: 2px solid ${T.border};
+  margin-top: -10px;
+}
+input[type=range].mobile-stretch::-moz-range-track {
+  height: 8px;
+  border-radius: 4px;
+  background: ${T.surfaceAlt};
+}
+input[type=range].mobile-stretch::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--thumb-color, ${T.accent});
+  border: 2px solid ${T.border};
+}
+`;
+
+/* ── SliderRow with long-press ── */
+function SliderRow({ label, val, setter, color, min, max }) {
+  const step = 0.005;
+  const dec = useLongPress(() => setter(Math.max(min, +(val - step).toFixed(3))));
+  const inc = useLongPress(() => setter(Math.min(max, +(val + step).toFixed(3))));
+
+  const btnStyle = {
+    width: 36, height: 36, borderRadius: 8, border: `1px solid ${T.border}`,
+    background: T.surfaceAlt, color, cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontFamily: T.font, fontSize: 18, fontWeight: 700, flexShrink: 0,
+    touchAction: "manipulation", userSelect: "none", WebkitUserSelect: "none",
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ color, fontSize: 11, fontWeight: 600 }}>{label}</span>
+        <span style={{ color: T.textDim, fontSize: 10, fontVariantNumeric: "tabular-nums" }}>
+          {val?.toFixed(3)}
+        </span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <button {...dec} style={btnStyle}>{"\u2212"}</button>
+        <input type="range" className="mobile-stretch" min={min} max={max}
+          step={step} value={val} onChange={e => setter(Number(e.target.value))}
+          style={{ flex: 1, accentColor: color, "--thumb-color": color }} />
+        <button {...inc} style={btnStyle}>+</button>
+      </div>
+    </div>
+  );
+}
+
 /* ── Stretch Sheet ── */
 function StretchSheet({ getPanelRef, lang }) {
   const t = L[lang];
@@ -114,6 +210,7 @@ function StretchSheet({ getPanelRef, lang }) {
 
   return (
     <div>
+      <style>{mobileRangeCSS}</style>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
         <span style={{ fontSize: 11, color: T.textDim, letterSpacing: "0.08em" }}>{t.stretch}</span>
         <div style={{ display: "flex", gap: 4 }}>
@@ -132,33 +229,8 @@ function StretchSheet({ getPanelRef, lang }) {
             [t.midtone, manualMid, handleSetManualMid, T.accent, 0.001, 0.999],
             [t.highlight, manualHi, handleSetManualHi, T.green, 0, 1],
           ].map(([label, val, setter, color, min, max]) => (
-            <div key={label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ color, fontSize: 11, fontWeight: 600 }}>{label}</span>
-                <span style={{ color: T.textDim, fontSize: 10, fontVariantNumeric: "tabular-nums" }}>
-                  {val?.toFixed(3)}
-                </span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button onClick={() => setter(Math.max(min, +(val - 0.005).toFixed(3)))}
-                  style={{
-                    width: 32, height: 32, borderRadius: 8, border: `1px solid ${T.border}`,
-                    background: T.surfaceAlt, color, cursor: "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontFamily: T.font, fontSize: 16, fontWeight: 700, flexShrink: 0,
-                  }}>{"\u2212"}</button>
-                <input type="range" min={min} max={max} step={0.001} value={val}
-                  onChange={e => setter(Number(e.target.value))}
-                  style={{ flex: 1, accentColor: color, height: 28 }} />
-                <button onClick={() => setter(Math.min(max, +(val + 0.005).toFixed(3)))}
-                  style={{
-                    width: 32, height: 32, borderRadius: 8, border: `1px solid ${T.border}`,
-                    background: T.surfaceAlt, color, cursor: "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontFamily: T.font, fontSize: 16, fontWeight: 700, flexShrink: 0,
-                  }}>+</button>
-              </div>
-            </div>
+            <SliderRow key={label} label={label} val={val} setter={setter}
+              color={color} min={min} max={max} />
           ))}
         </div>
       )}
