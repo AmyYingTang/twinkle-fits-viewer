@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { T } from "../theme.js";
 import { L } from "../i18n.js";
 import { Btn } from "./Btn.jsx";
@@ -8,31 +8,7 @@ import { exportPNG } from "../utils/exportFits.js";
 import { formatRA, formatDec } from "../utils/wcs.js";
 import BottomSheet from "./BottomSheet.jsx";
 import { useWorkspace } from "../workspace/WorkspaceContext.js";
-
-/* Long-press hook: fires callback on click, then repeats at 100ms while held */
-function useLongPress(callback) {
-  const intervalRef = useRef(null);
-  const callbackRef = useRef(callback);
-  callbackRef.current = callback;
-
-  const stop = useCallback(() => {
-    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
-  }, []);
-
-  const start = useCallback(() => {
-    callbackRef.current();
-    intervalRef.current = setInterval(() => callbackRef.current(), 100);
-  }, []);
-
-  useEffect(() => stop, [stop]);
-
-  return {
-    onPointerDown: start,
-    onPointerUp: stop,
-    onPointerLeave: stop,
-    onPointerCancel: stop,
-  };
-}
+import { useLongPress } from "../hooks/useLongPress.js";
 
 const TABS = ["stretch", "stats", "header", "export"];
 

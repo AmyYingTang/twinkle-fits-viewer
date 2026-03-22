@@ -11,6 +11,7 @@ import { T } from "../theme.js";
 import { L } from "../i18n.js";
 import { Btn } from "../components/Btn.jsx";
 import { useWorkspace } from "../workspace/WorkspaceContext.js";
+import { useLongPress } from "../hooks/useLongPress.js";
 
 const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
   const t = L[lang];
@@ -741,25 +742,10 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
                       [t.midtone, manualMid, setManualMid, T.accent, 0.001, 0.999],
                       [t.highlight, manualHi, setManualHi, T.green, 0, 1],
                     ].map(([label, val, setter, color, min, max]) => (
-                      <label key={label} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10 }}>
-                        <span style={{ color, width: 50 }}>{label}</span>
-                        <button onClick={() => setter(Math.max(min, +(val - 0.001).toFixed(3)))}
-                          style={{ background: "transparent", border: `1px solid ${T.border}`, color: T.textDim,
-                            borderRadius: 3, width: 18, height: 18, cursor: "pointer", fontFamily: T.font, fontSize: 11, padding: 0 }}>{"\u2212"}</button>
-                        <input type="range" min={min} max={max} step={0.001} value={val}
-                          onPointerDown={() => { stretchDraggingRef.current = true; }}
-                          onPointerUp={() => { stretchDraggingRef.current = false; setRenderGen(g => g + 1); }}
-                          onChange={e => setter(Number(e.target.value))}
-                          style={{ flex: 1, accentColor: color }} />
-                        <button onClick={() => setter(Math.min(max, +(val + 0.001).toFixed(3)))}
-                          style={{ background: "transparent", border: `1px solid ${T.border}`, color: T.textDim,
-                            borderRadius: 3, width: 18, height: 18, cursor: "pointer", fontFamily: T.font, fontSize: 11, padding: 0 }}>+</button>
-                        <input type="number" min={min} max={max} step={0.001}
-                          value={val.toFixed(3)}
-                          onChange={e => { const v = Number(e.target.value); if (!isNaN(v)) setter(Math.min(max, Math.max(min, v))); }}
-                          style={{ width: 46, background: T.surfaceAlt, border: `1px solid ${T.border}`, color: T.text,
-                            borderRadius: 3, fontFamily: T.font, fontSize: 9, textAlign: "right", padding: "1px 3px" }} />
-                      </label>
+                      <DesktopSliderRow key={label} label={label} val={val} setter={setter}
+                        color={color} min={min} max={max}
+                        onDragStart={() => { stretchDraggingRef.current = true; }}
+                        onDragEnd={() => { stretchDraggingRef.current = false; setRenderGen(g => g + 1); }} />
                     ))}
                   </div>
                 )}
@@ -994,5 +980,33 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
     </div>
   );
 });
+
+/* ── Desktop slider row with long-press ── */
+function DesktopSliderRow({ label, val, setter, color, min, max, onDragStart, onDragEnd }) {
+  const step = 0.001;
+  const dec = useLongPress(() => setter(Math.max(min, +(val - step).toFixed(3))));
+  const inc = useLongPress(() => setter(Math.min(max, +(val + step).toFixed(3))));
+  const btnStyle = {
+    background: "transparent", border: `1px solid ${T.border}`, color: T.textDim,
+    borderRadius: 3, width: 18, height: 18, cursor: "pointer", fontFamily: T.font, fontSize: 11, padding: 0,
+  };
+  return (
+    <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10 }}>
+      <span style={{ color, width: 50 }}>{label}</span>
+      <button {...dec} style={btnStyle}>{"\u2212"}</button>
+      <input type="range" min={min} max={max} step={step} value={val}
+        onPointerDown={onDragStart}
+        onPointerUp={onDragEnd}
+        onChange={e => setter(Number(e.target.value))}
+        style={{ flex: 1, accentColor: color }} />
+      <button {...inc} style={btnStyle}>+</button>
+      <input type="number" min={min} max={max} step={step}
+        value={val.toFixed(3)}
+        onChange={e => { const v = Number(e.target.value); if (!isNaN(v)) setter(Math.min(max, Math.max(min, v))); }}
+        style={{ width: 46, background: T.surfaceAlt, border: `1px solid ${T.border}`, color: T.text,
+          borderRadius: 3, fontFamily: T.font, fontSize: 9, textAlign: "right", padding: "1px 3px" }} />
+    </label>
+  );
+}
 
 export default FitsPanel;
