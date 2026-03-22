@@ -130,7 +130,7 @@ input[type=range].mobile-stretch::-moz-range-thumb {
 `;
 
 /* ── SliderRow with long-press ── */
-function SliderRow({ label, val, setter, color, min, max }) {
+function SliderRow({ label, val, setter, color, min, max, onDragStart, onDragEnd }) {
   const step = 0.005;
   const dec = useLongPress(() => setter(Math.max(min, +(val - step).toFixed(3))));
   const inc = useLongPress(() => setter(Math.min(max, +(val + step).toFixed(3))));
@@ -154,7 +154,10 @@ function SliderRow({ label, val, setter, color, min, max }) {
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <button {...dec} style={btnStyle}>{"\u2212"}</button>
         <input type="range" className="mobile-stretch" min={min} max={max}
-          step={step} value={val} onChange={e => setter(Number(e.target.value))}
+          step={step} value={val}
+          onPointerDown={onDragStart}
+          onPointerUp={() => { onDragEnd?.(); }}
+          onChange={e => setter(Number(e.target.value))}
           style={{ flex: 1, accentColor: color, "--thumb-color": color }} />
         <button {...inc} style={btnStyle}>+</button>
       </div>
@@ -230,7 +233,9 @@ function StretchSheet({ getPanelRef, lang }) {
             [t.highlight, manualHi, handleSetManualHi, T.green, 0, 1],
           ].map(([label, val, setter, color, min, max]) => (
             <SliderRow key={label} label={label} val={val} setter={setter}
-              color={color} min={min} max={max} />
+              color={color} min={min} max={max}
+              onDragStart={() => getPanelRef()?.setStretchDragging?.(true)}
+              onDragEnd={() => getPanelRef()?.setStretchDragging?.(false)} />
           ))}
         </div>
       )}

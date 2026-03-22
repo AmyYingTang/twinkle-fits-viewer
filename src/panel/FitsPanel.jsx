@@ -5,6 +5,8 @@ import { computeStats, computeHistogram, autoStretchParams } from "../utils/stre
 import { renderToCanvas, COLORMAPS } from "../utils/renderCanvas.js";
 import { drawHistogram } from "../utils/drawHistogram.js";
 import { exportPNG, exportTIFF } from "../utils/exportFits.js";
+import { generatePreviewChannels } from "../utils/previewChannels.js";
+import StretchWorker from "../utils/stretchWorker.js?worker";
 import { T } from "../theme.js";
 import { L } from "../i18n.js";
 import { Btn } from "../components/Btn.jsx";
@@ -50,6 +52,11 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
   const gridCanvasRef = useRef(null);
   const touchStateRef = useRef({ initialDist: null, initialZoom: null, lastPanPos: null });
   const longPressTimerRef = useRef(null);
+  const previewDataRef = useRef(null);     // low-res preview channels
+  const workerRef = useRef(null);           // Web Worker for full-res render
+  const stretchDraggingRef = useRef(false); // true while slider is being dragged
+  const debounceTimerRef = useRef(null);    // debounce timer for preview renders
+  const [renderGen, setRenderGen] = useState(0); // bumped on drag end to force full-res render
 
   const hdu = fits ? fits[activeHdu] : null;
   const imageData = hdu?.data;
@@ -99,15 +106,66 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
     getManualLo: () => manualLo,
     getManualHi: () => manualHi,
     getManualMid: () => manualMid,
+    setStretchDragging: (v) => { stretchDraggingRef.current = v; if (!v) setRenderGen(g => g + 1); },
     setAutoMode, setManualLo, setManualHi, setManualMid,
     setColorMap, setShowHeader, setShowHist, setShowGrid, setShowExport,
   }));
 
-  // Render image (containerSize dep ensures re-draw when panel becomes visible)
+  // Generate preview channels & init worker when image changes
+  useEffect(() => {
+    if (!imageData) return;
+    previewDataRef.current = generatePreviewChannels(imageData);
+
+    // Init or re-init Web Worker with channel data
+    if (workerRef.current) workerRef.current.terminate();
+    const worker = new StretchWorker();
+    workerRef.current = worker;
+    worker.postMessage({
+      type: "init",
+      channels: imageData.channels.map(ch => ch.buffer.slice(0)),
+      width: imageData.width,
+      height: imageData.height,
+      depth: imageData.depth,
+    });
+    worker.onmessage = (e) => {
+      if (e.data.type === "result" && canvasRef.current) {
+        const { width, height } = e.data;
+        const canvas = canvasRef.current;
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        const imgData = new ImageData(new Uint8ClampedArray(e.data.imageData), width, height);
+        ctx.putImageData(imgData, 0, 0);
+      }
+    };
+    return () => worker.terminate();
+  }, [imageData]);
+
+  // Render image: preview during drag (debounced), worker on release
   useEffect(() => {
     if (!canvasRef.current || !imageData || !containerSize.w) return;
-    renderToCanvas(canvasRef.current, imageData, currentStretch, colorMap);
-  }, [imageData, currentStretch, colorMap, containerSize.w]);
+
+    if (stretchDraggingRef.current) {
+      // Debounce 30ms, use low-res preview if available
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(() => {
+        const data = previewDataRef.current || imageData;
+        renderToCanvas(canvasRef.current, data, currentStretch, colorMap);
+      }, 30);
+    } else {
+      // Not dragging — use Worker for full-res, fallback to direct render
+      clearTimeout(debounceTimerRef.current);
+      if (workerRef.current) {
+        workerRef.current.postMessage({
+          type: "render",
+          stretchParams: currentStretch,
+          colorMap,
+        });
+      } else {
+        renderToCanvas(canvasRef.current, imageData, currentStretch, colorMap);
+      }
+    }
+  }, [imageData, currentStretch, colorMap, containerSize.w, renderGen]);
 
   // Render histogram
   useEffect(() => {
@@ -689,6 +747,8 @@ const FitsPanel = forwardRef(function FitsPanel({ id, lang = "en" }, ref) {
                           style={{ background: "transparent", border: `1px solid ${T.border}`, color: T.textDim,
                             borderRadius: 3, width: 18, height: 18, cursor: "pointer", fontFamily: T.font, fontSize: 11, padding: 0 }}>{"\u2212"}</button>
                         <input type="range" min={min} max={max} step={0.001} value={val}
+                          onPointerDown={() => { stretchDraggingRef.current = true; }}
+                          onPointerUp={() => { stretchDraggingRef.current = false; setRenderGen(g => g + 1); }}
                           onChange={e => setter(Number(e.target.value))}
                           style={{ flex: 1, accentColor: color }} />
                         <button onClick={() => setter(Math.min(max, +(val + 0.001).toFixed(3)))}
